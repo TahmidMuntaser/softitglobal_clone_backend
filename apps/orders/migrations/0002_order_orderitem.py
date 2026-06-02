@@ -7,32 +7,32 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    initial = True
-
     dependencies = [
         ('catalog', '0001_initial'),
+        ('orders', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Cart',
+            name='Order',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('session_id', models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
+                ('session_id', models.UUIDField()),
+                ('customer_name', models.CharField(max_length=255)),
+                ('phone', models.CharField(max_length=20)),
+                ('address', models.TextField()),
+                ('total_amount', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
             ],
         ),
         migrations.CreateModel(
-            name='CartItem',
+            name='OrderItem',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('quantity', models.PositiveIntegerField()),
-                ('cart', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='orders.cart')),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cart_items', to='catalog.product')),
+                ('price_snapshot', models.DecimalField(decimal_places=2, max_digits=10)),
+                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='orders.order')),
+                ('product', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='order_items', to='catalog.product')),
             ],
-            options={
-                'unique_together': {('cart', 'product')},
-            },
         ),
     ]

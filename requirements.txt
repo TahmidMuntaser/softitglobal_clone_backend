@@ -2,6 +2,7 @@ asgiref==3.11.1
 attrs==26.1.0
 Django==5.2.5
 djangorestframework==3.16.1
+drf-spectacular==0.29.0
 inflection==0.5.1
 pillow==11.3.0
 psycopg==3.3.4
