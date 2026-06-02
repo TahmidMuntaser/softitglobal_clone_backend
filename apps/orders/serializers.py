@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from rest_framework import serializers
@@ -52,6 +53,12 @@ class CheckoutSerializer(serializers.Serializer):
     customer_name = serializers.CharField(required=True, max_length=255, help_text='Customer full name.')
     phone = serializers.CharField(required=True, max_length=20, help_text='Customer phone number.')
     address = serializers.CharField(required=True, help_text='Shipping address.')
+    
+    def validate_phone(self, value):
+        pattern = r'^(?:\+8801[3-9]\d{8}|01[3-9]\d{8})$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Invalid phone number format")
+        return value
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
