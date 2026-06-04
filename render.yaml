@@ -2,5 +2,6 @@ services:
   - type: web
     name: softitglobal-clone-backend
     env: python
-    buildCommand: python -m pip install -r requirements.txt && python manage.py collectstatic --noinput
+    buildCommand: python -m pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput
     startCommand: gunicorn wsgi:application
+python -m pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput
