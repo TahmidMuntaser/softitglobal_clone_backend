@@ -10,7 +10,7 @@ class Category(models.Model):
     slug = models.SlugField(unique=True)
     image_url = models.URLField(blank=True, null=True)
     is_popular = models.BooleanField(default=False)
-    
+    parent_category = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     class Meta:
         constraints = [
             models.CheckConstraint(
