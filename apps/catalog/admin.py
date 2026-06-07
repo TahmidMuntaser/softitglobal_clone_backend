@@ -5,8 +5,8 @@ from apps.catalog.models import Category, Product
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'image_url', 'is_popular', 'parent_category')
-    search_fields = ('name', 'slug', 'is_popular', 'parent_category')
+    list_display = ('name', 'slug', 'image_url', 'delivered_count' , 'parent_category')
+    search_fields = ('name', 'slug', 'delivered_count', 'parent_category')
 
 
 @admin.register(Product)

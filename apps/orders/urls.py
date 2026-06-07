@@ -1,5 +1,5 @@
 from django.urls import path
-
+from .views import deliver_order_api
 from apps.orders.views import CartAddAPIView, CartDetailAPIView, CartItemDetailAPIView, CheckoutAPIView, OrderDetailAPIView
 
 urlpatterns = [
@@ -8,4 +8,5 @@ urlpatterns = [
     path('cart/item/<uuid:pk>/', CartItemDetailAPIView.as_view(), name='cart-item-detail'),
     path('checkout/', CheckoutAPIView.as_view(), name='checkout'),
     path('orders/<uuid:pk>/', OrderDetailAPIView.as_view(), name='order-detail'),
+    path("orders/<uuid:pk>/deliver/", deliver_order_api),
 ]

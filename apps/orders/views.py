@@ -3,7 +3,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
-
+from rest_framework.decorators import api_view
 from apps.orders.models import Cart, CartItem, Order
 from apps.orders.serializers import (
     CartAddSerializer,
@@ -14,7 +14,19 @@ from apps.orders.serializers import (
     OrderSerializer,
 )
 from apps.catalog.models import Product
-from apps.orders.services import add_item_to_cart, create_order_from_cart
+from apps.orders.services import add_item_to_cart, create_order_from_cart, deliver_order
+
+
+@api_view(["POST"])
+def deliver_order_api(request, pk):
+    order = deliver_order(pk)
+    return Response(
+        {
+            "status": "delivered",
+            "order_id": str(order.id),
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 class CartAddAPIView(APIView):
@@ -124,7 +136,16 @@ class CheckoutAPIView(APIView):
         )
 
 
-class OrderDetailAPIView(generics.RetrieveAPIView):
-    queryset = Order.objects.prefetch_related('items__product').all()
-    serializer_class = OrderSerializer
-    lookup_field = 'pk'
+class OrderDetailAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            order = Order.objects.prefetch_related('items__product').get(pk=pk)
+        except Order.DoesNotExist:
+            return Response(
+                {'detail': 'Order not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        data = OrderSerializer(order).data
+
+        return Response(data, status=status.HTTP_200_OK)

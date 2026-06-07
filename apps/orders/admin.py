@@ -1,6 +1,6 @@
 from django.contrib import admin
-
 from apps.orders.models import Cart, CartItem, Order, OrderItem
+from apps.orders.services import deliver_order
 
 
 @admin.register(Cart)
@@ -14,6 +14,12 @@ class CartItemAdmin(admin.ModelAdmin):
     list_display = ('cart', 'product', 'quantity')
     search_fields = ('cart__session_id', 'product__name')
     list_filter = ('product',)
+    
+
+@admin.action(description="Mark selected orders as delivered")
+def make_delivered(modeladmin, request, queryset):
+    for order in queryset:
+        deliver_order(order.id)
 
 
 @admin.register(Order)

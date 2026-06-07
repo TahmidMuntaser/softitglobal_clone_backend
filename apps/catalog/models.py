@@ -9,22 +9,16 @@ class Category(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     image_url = models.URLField(blank=True, null=True)
-    is_popular = models.BooleanField(default=False)
-    parent_category = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(is_popular=False) | models.Q(image_url__isnull=False),
-                name="popular_category_requires_image"
-            )
-        ]
+    # is_popular = models.BooleanField(default=False)
+    parent_category = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name="subcategories")
+    delivered_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
     
     def clean(self):
-        if self.is_popular and not self.image_url:
-            raise ValidationError("Popular category must have an image.")
+        if self.parent_category_id == self.id:
+            raise ValidationError("Category cannot be its own parent.")
 
 
 class Product(models.Model):
