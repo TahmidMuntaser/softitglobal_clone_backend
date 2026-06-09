@@ -1,12 +1,10 @@
 from django.urls import path
-from .views import deliver_order_api
-from apps.orders.views import CartAddAPIView, CartDetailAPIView, CartItemDetailAPIView, CheckoutAPIView, OrderDetailAPIView
+from apps.orders.views import (cart_add, cart_detail, cart_item_detail, checkout,order_detail,)
 
 urlpatterns = [
-    path('cart/add/', CartAddAPIView.as_view(), name='cart-add'),
-    path('cart/', CartDetailAPIView.as_view(), name='cart-detail'),
-    path('cart/item/<uuid:pk>/', CartItemDetailAPIView.as_view(), name='cart-item-detail'),
-    path('checkout/', CheckoutAPIView.as_view(), name='checkout'),
-    path('orders/<uuid:pk>/', OrderDetailAPIView.as_view(), name='order-detail'),
-    path("orders/<uuid:pk>/deliver/", deliver_order_api),
+    path("cart/add/", cart_add),
+    path("cart/", cart_detail),
+    path("cart/item/<uuid:pk>/", cart_item_detail),
+    path("checkout/", checkout),
+    path("orders/<uuid:pk>/", order_detail),
 ]

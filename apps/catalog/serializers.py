@@ -15,8 +15,7 @@ class ProductSerializer(serializers.ModelSerializer):
         source='category',
         queryset=Category.objects.all(),
         write_only=True,
-        required=False,
-        help_text='Optional category UUID for writes.',
+        help_text='Required category UUID for writes.',
     )
 
     class Meta:

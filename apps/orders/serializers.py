@@ -4,6 +4,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.catalog.serializers import ProductSerializer
+from apps.orders.constants import OrderStatus
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 
 
@@ -81,6 +82,11 @@ class OrderSerializer(serializers.ModelSerializer):
             'phone',
             'address',
             'total_amount',
+            'status',
             'created_at',
             'items',
         )
+
+
+class OrderStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=OrderStatus.CHOICES)

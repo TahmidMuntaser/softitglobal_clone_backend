@@ -1,10 +1,18 @@
+from uuid import UUID
+
 from django.http import Http404
-from rest_framework import generics, status
+from django.db import transaction
+from django.db.models import Q
+
+from rest_framework import status, viewsets
 from rest_framework.response import Response
-from rest_framework.views import APIView
-from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework.decorators import api_view
+
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
 from apps.orders.models import Cart, CartItem, Order
+from apps.accounts.jwt import IsSuperUser
+from apps.orders.constants import OrderStatus
 from apps.orders.serializers import (
     CartAddSerializer,
     CartItemSerializer,
@@ -12,10 +20,12 @@ from apps.orders.serializers import (
     CartSerializer,
     CheckoutSerializer,
     OrderSerializer,
+    OrderStatusUpdateSerializer,
 )
 from apps.catalog.models import Product
 from apps.orders.services import add_item_to_cart, create_order_from_cart, deliver_order
 
+# public endptn 
 
 @api_view(["POST"])
 def deliver_order_api(request, pk):
@@ -29,123 +39,118 @@ def deliver_order_api(request, pk):
     )
 
 
-class CartAddAPIView(APIView):
-    @extend_schema(
-        request=CartAddSerializer,
-        responses={201: CartSerializer},
-    )
-    def post(self, request):
-        serializer = CartAddSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            cart = add_item_to_cart(
-                session_id=serializer.validated_data['session_id'],
-                product_id=serializer.validated_data['product_id'],
-                quantity=serializer.validated_data['quantity'],
-            )
-        except Product.DoesNotExist:
-            return Response({'detail': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
+@api_view(["POST"])
+def cart_add(request):
+    serializer = CartAddSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        cart = add_item_to_cart(
+            session_id=serializer.validated_data["session_id"],
+            product_id=serializer.validated_data["product_id"],
+            quantity=serializer.validated_data["quantity"],
+        )
+    except Product.DoesNotExist:
+        return Response({"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(CartSerializer(cart).data, status=status.HTTP_201_CREATED)
 
 
-class CartDetailAPIView(APIView):
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name='session_id',
-                type=OpenApiTypes.UUID,
-                location=OpenApiParameter.QUERY,
-                required=True,
-                description='Cart session UUID stored by the frontend.',
-            )
-        ],
-        responses={200: CartSerializer},
-    )
-    def get(self, request):
-        session_id = request.query_params.get('session_id')
-        if not session_id:
-            return Response({'detail': 'session_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+@api_view(["GET"])
+def cart_detail(request):
+    session_id = request.query_params.get("session_id")
+    if not session_id:
+        return Response({"detail": "session_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            cart = Cart.objects.prefetch_related('items__product').get(session_id=session_id)
-        except Cart.DoesNotExist:
-            raise Http404
+    try:
+        cart = Cart.objects.prefetch_related("items__product").get(session_id=session_id)
+    except Cart.DoesNotExist:
+        raise Http404
 
-        return Response(CartSerializer(cart).data)
+    return Response(CartSerializer(cart).data)
 
 
-class CartItemDetailAPIView(APIView):
-    @extend_schema(
-        request=CartItemUpdateSerializer,
-        responses={200: CartItemSerializer},
-    )
-    def patch(self, request, pk):
-        try:
-            cart_item = CartItem.objects.select_related('cart', 'product').get(pk=pk)
-        except CartItem.DoesNotExist:
-            raise Http404
+@api_view(["PATCH", "DELETE"])
+def cart_item_detail(request, pk):
+    try:
+        cart_item = CartItem.objects.select_related("cart", "product").get(pk=pk)
+    except CartItem.DoesNotExist:
+        raise Http404
 
+    if request.method == "PATCH":
         serializer = CartItemUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        cart_item.quantity = serializer.validated_data['quantity']
-        cart_item.save(update_fields=['quantity'])
+
+        cart_item.quantity = serializer.validated_data["quantity"]
+        cart_item.save(update_fields=["quantity"])
+
         return Response(CartItemSerializer(cart_item).data)
 
-    def delete(self, request, pk):
-        try:
-            cart_item = CartItem.objects.get(pk=pk)
-        except CartItem.DoesNotExist:
-            raise Http404
-
+    if request.method == "DELETE":
         cart_item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class CheckoutAPIView(APIView):
-    @extend_schema(
-        request=CheckoutSerializer,
-        responses={201: None},
+@api_view(["POST"])
+def checkout(request):
+    serializer = CheckoutSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        cart = Cart.objects.prefetch_related("items__product").get(
+            session_id=serializer.validated_data["session_id"]
+        )
+    except Cart.DoesNotExist:
+        return Response({"detail": "Cart not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if not cart.items.exists():
+        return Response({"detail": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+    order = create_order_from_cart(
+        cart=cart,
+        customer_name=serializer.validated_data["customer_name"],
+        phone=serializer.validated_data["phone"],
+        address=serializer.validated_data["address"],
     )
-    def post(self, request):
-        serializer = CheckoutSerializer(data=request.data)
+
+    return Response(
+        {
+            "message": "Order placed successfully.",
+            "order_id": order.id,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET"])
+def order_detail(request, pk):
+    try:
+        order = Order.objects.prefetch_related("items__product").get(pk=pk)
+    except Order.DoesNotExist:
+        return Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+
+#  admin endptn 
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.prefetch_related("items__product").all().order_by("-created_at")
+    serializer_class = OrderSerializer
+    permission_classes = [IsSuperUser]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def partial_update(self, request, *args, **kwargs):
+        order = self.get_object()
+        serializer = OrderStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            cart = Cart.objects.prefetch_related('items__product').get(
-                session_id=serializer.validated_data['session_id']
-            )
-        except Cart.DoesNotExist:
-            return Response({'detail': 'Cart not found.'}, status=status.HTTP_404_NOT_FOUND)
+        new_status = serializer.validated_data["status"]
 
-        if not cart.items.exists():
-            return Response({'detail': 'Cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+        if new_status == OrderStatus.DELIVERED and order.status != OrderStatus.DELIVERED:
+            order = deliver_order(order.id)
+        else:
+            order.status = new_status
+            order.save(update_fields=["status"])
 
-        order = create_order_from_cart(
-            cart=cart,
-            customer_name=serializer.validated_data['customer_name'],
-            phone=serializer.validated_data['phone'],
-            address=serializer.validated_data['address'],
-        )
-
-        return Response(
-            {
-                'message': 'Order placed successfully.',
-                'order_id': order.id,
-            },
-            status=status.HTTP_201_CREATED,
-        )
-
-
-class OrderDetailAPIView(APIView):
-    def get(self, request, pk):
-        try:
-            order = Order.objects.prefetch_related('items__product').get(pk=pk)
-        except Order.DoesNotExist:
-            return Response(
-                {'detail': 'Order not found.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        data = OrderSerializer(order).data
-
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(self.get_serializer(order).data, status=status.HTTP_200_OK)
