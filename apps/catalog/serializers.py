@@ -7,6 +7,9 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ('id', 'name', 'slug', 'image_url', 'parent_category', 'delivered_count',)
+        extra_kwargs = {
+            'slug': {'validators': []},
+        }
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -21,3 +24,6 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ('id', 'name', 'slug', 'price', 'image_url', 'category', 'category_id')
+        extra_kwargs = {
+            'slug': {'validators': []},
+        }

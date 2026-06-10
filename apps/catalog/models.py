@@ -20,6 +20,23 @@ class Category(models.Model):
         if self.parent_category_id == self.id:
             raise ValidationError("Category cannot be its own parent.")
 
+    def _ensure_unique_slug(self):
+        original_slug = self.slug
+        qs = Category.objects.filter(slug=self.slug)
+        
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+
+        counter = 1        
+        while qs.exists():
+            self.slug = f"{original_slug}-{counter}"
+            qs = Category.objects.filter(slug=self.slug)
+            counter += 1
+
+    def save(self, *args, **kwargs):
+        self._ensure_unique_slug()
+        models.Model.save(self, *args, **kwargs)
+
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -31,4 +48,21 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    def _ensure_unique_slug(self):
+        original_slug = self.slug
+        qs = Product.objects.filter(slug=self.slug)
+        
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        
+        counter = 1
+        while qs.exists():
+            self.slug = f"{original_slug}-{counter}"
+            qs = Product.objects.filter(slug=self.slug)
+            counter += 1
+
+    def save(self, *args, **kwargs):
+        self._ensure_unique_slug()
+        models.Model.save(self, *args, **kwargs)
 

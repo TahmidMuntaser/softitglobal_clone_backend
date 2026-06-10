@@ -3,7 +3,7 @@ from django.urls import include, path
 from django.shortcuts import redirect
 from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from apps.accounts.api import token_obtain_pair, token_refresh
+from apps.accounts.views import token_obtain_pair, token_refresh
 from apps.catalog.views import CategoryViewSet, ProductViewSet
 from apps.orders.views import OrderViewSet
 
