@@ -3,7 +3,7 @@ from django.urls import include, path
 from django.shortcuts import redirect
 from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from apps.accounts.views import token_obtain_pair, token_refresh
+from apps.accounts.views import token_obtain_pair, token_refresh, logout
 from apps.catalog.views import CategoryViewSet, ProductViewSet
 from apps.orders.views import OrderViewSet
 
@@ -23,6 +23,7 @@ urlpatterns = [
 
     path("api/token/", token_obtain_pair),
     path("api/token/refresh/", token_refresh),
+    path("api/logout/", logout),
 
     path("api/openapi/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

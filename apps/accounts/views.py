@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema
@@ -13,14 +13,23 @@ from apps.accounts.serializers import (
     TokenRefreshResponseSerializer,
 )
 
-
+@extend_schema(
+    request=None,
+    responses={200: None},
+    description="Logout endpoint: client should call this before clearing stored JWTs.",
+)
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    return Response(status=status.HTTP_200_OK)
+
+
 @extend_schema(
     request=TokenObtainPairRequestSerializer,
     responses={200: TokenObtainPairResponseSerializer},
 )
-
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def token_obtain_pair(request):
     username = request.data.get("username", "")
     password = request.data.get("password", "")
@@ -58,13 +67,12 @@ def token_obtain_pair(request):
     )
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
 @extend_schema(
     request=TokenRefreshRequestSerializer,
     responses={200: TokenRefreshResponseSerializer},
 )
-
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def token_refresh(request):
     refresh = request.data.get("refresh")
 
