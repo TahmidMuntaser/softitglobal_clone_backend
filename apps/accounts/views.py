@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema
+from django.http import HttpResponse
 
 from apps.accounts.jwt import create_access_token, create_token_pair, decode_token
 from apps.accounts.serializers import (
@@ -18,10 +19,15 @@ from apps.accounts.serializers import (
     responses={200: None},
     description="Logout endpoint: client should call this before clearing stored JWTs.",
 )
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout(request):
-    return Response(status=status.HTTP_200_OK)
+    response = HttpResponse(status=200)
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    
+    return response
 
 
 @extend_schema(
