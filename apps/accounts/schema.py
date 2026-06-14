@@ -2,7 +2,7 @@ from drf_spectacular.extensions import OpenApiAuthenticationExtension
 
 
 class JWTAuthenticationScheme(OpenApiAuthenticationExtension):
-    target_class = 'apps.accounts.jwt.JWTAuthentication'
+    target_class = 'apps.accounts.simplejwt_utils.JWTAuthentication'
     name = 'JWTAuth'
 
     def get_security_definition(self, auto_schema):

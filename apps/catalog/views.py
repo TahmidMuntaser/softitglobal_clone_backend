@@ -3,7 +3,7 @@ from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import viewsets
-from apps.accounts.jwt import IsSuperUser
+from apps.accounts.permissions import IsSuperUser
 from apps.catalog.models import Category, Product
 from apps.catalog.serializers import CategorySerializer, ProductSerializer
 

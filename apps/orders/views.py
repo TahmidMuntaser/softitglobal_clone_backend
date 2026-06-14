@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from apps.orders.models import Cart, CartItem, Order
-from apps.accounts.jwt import IsSuperUser
+from apps.accounts.permissions import IsSuperUser
 from apps.orders.constants import OrderStatus
 from apps.orders.serializers import (
     CartAddSerializer,

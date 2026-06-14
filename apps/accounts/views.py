@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema
 from django.http import HttpResponse
-
-from apps.accounts.jwt import create_access_token, create_token_pair, decode_token
+from django.conf import settings
+from rest_framework_simplejwt.tokens import RefreshToken
 from apps.accounts.serializers import (
     TokenObtainPairRequestSerializer,
     TokenObtainPairResponseSerializer,
@@ -59,10 +59,13 @@ def token_obtain_pair(request):
             {"detail": "Admin access only."},
             status=status.HTTP_403_FORBIDDEN,
         )
-
+        
+    refresh = RefreshToken.for_user(user)
+    access = refresh.access_token
     return Response(
         {
-            **create_token_pair(user),
+            "access": str(access),
+            "refresh": str(refresh),
             "user": {
                 "id": user.id,
                 "username": user.username,
@@ -88,11 +91,18 @@ def token_refresh(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    payload = decode_token(refresh, "refresh")
+    try:
+        token_obj = RefreshToken(refresh)
+        payload = token_obj.payload
+    except Exception:
+        return Response(
+            {"detail": "Invalid refresh token."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
 
     User = get_user_model()
     try:
-        user = User.objects.get(pk=payload["user_id"])
+        user = User.objects.get(pk=payload.get("user_id"))
     except User.DoesNotExist:
         return Response(
             {"detail": "User not found."},
@@ -104,8 +114,9 @@ def token_refresh(request):
             {"detail": "Admin access only."},
             status=status.HTTP_403_FORBIDDEN,
         )
-
+        
+    new_access = token_obj.access_token
     return Response(
-        {"access": create_access_token(user)},
+        {"access": str(new_access)},
         status=status.HTTP_200_OK,
     )
