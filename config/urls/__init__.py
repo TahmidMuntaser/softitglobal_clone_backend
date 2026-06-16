@@ -7,8 +7,10 @@ from apps.accounts.views import (
     token_obtain_pair,
     token_refresh,
     logout,
-    group_list,
-    group_detail,
+    group_list_get,
+    group_list_post,
+    group_detail_get,
+    group_detail_manage,
     group_set_permissions,
     permission_list,
     admin_user_list,
@@ -30,26 +32,38 @@ def home(request):
 
 urlpatterns = [
     path("", home, name="home"),
+
+    # admin dashboard
     path("admin/", admin.site.urls),
 
+    # login, logout
     path("api/token/", token_obtain_pair),
     path("api/token/refresh/", token_refresh),
     path("api/logout/", logout),
 
+    # swagger ui
     path("api/openapi/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 
-    path("api/", include(router.urls)),
-    
-    # rbac endptn 
-    path("api/roles/", group_list, name="group-list"),
-    path("api/roles/<int:pk>/", group_detail, name="group-detail"),
-    path("api/roles/<int:pk>/permissions/", group_set_permissions, name="group-set-permissions"),
+    # role endpoints
+    path("api/roles/", group_list_get, name="group-list"),
+    path("api/roles/create/", group_list_post, name="group-create"),
+    path("api/roles/<int:pk>/", group_detail_get, name="group-detail"),
+    path("api/roles/<int:pk>/update/", group_detail_manage, name="group-manage"),  
+
+    # permission endpoints
     path("api/permissions/", permission_list, name="permission-list"),
+    path("api/roles/<int:pk>/permissions/", group_set_permissions, name="group-set-permissions"),
+
+    # admin user endpoints
     path("api/admin-users/", admin_user_list, name="admin-user-list"),
     path("api/admin-users/<int:pk>/", admin_user_detail, name="admin-user-detail"),
     path("api/admin-users/<int:pk>/roles/", admin_user_assign_roles, name="admin-user-assign-roles"),
 
+    # categories, order, product
+    path("api/", include(router.urls)),
+
+    # public endpoints
     path("api/public/", include("apps.catalog.urls")),
     path("api/public/", include("apps.orders.urls")),
 ]

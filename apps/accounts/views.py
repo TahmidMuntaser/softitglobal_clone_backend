@@ -15,8 +15,8 @@ from apps.accounts.serializers import (
     GroupSerializer,
     PermissionSerializer,
     AdminUserSerializer,
-    PermissionAssignSerializer,
-    RoleAssignSerializer,
+    GroupPermissionSerializer,
+    UserRoleSerializer,
     GroupCreateSerializer,
     AdminUserCreateSerializer,
 )
@@ -130,123 +130,111 @@ def token_refresh(request):
         status=status.HTTP_200_OK,
     )
 
-# role list 
-@extend_schema_view(
-    get=extend_schema(
-        responses={200: GroupSerializer(many=True)},
-        description="List all roles.",
-    ),
-    post=extend_schema(
-        request=GroupCreateSerializer,
-        responses={201: GroupSerializer},
-        description="Create a role.",
-    ),
-)
-@api_view(["GET", "POST"]) 
-@permission_classes([IsAuthenticated, IsSuperUser])
-def group_list(request):
-    if request.method == "GET":
-        return Response(GroupSerializer(Group.objects.all(), many=True).data)
 
+# GET /api/roles/
+@extend_schema(
+    responses=GroupSerializer(many=True),
+    description="List all roles"
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsSuperUser])
+def group_list_get(request):
+    return Response(Group.objects.values("id", "name"))
+
+
+# POST /api/roles/create/
+@extend_schema(
+    request=GroupSerializer,
+    responses=GroupSerializer,
+    description="Create a role"
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsSuperUser])
+def group_list_post(request):
     serializer = GroupCreateSerializer(data=request.data)
-
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        group = serializer.save()
+        return Response(GroupSerializer(group).data, status=201)
+    return Response(serializer.errors, status=400)
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-#  role detail  
-@extend_schema_view(
-    get=extend_schema(
-        responses={200: GroupSerializer},
-    ),
-    put=extend_schema(
-        request=GroupCreateSerializer,
-        responses={200: GroupSerializer},
-    ),
-    delete=extend_schema(
-        responses={204: None},
-    ),
+# GET /api/roles/{id}/
+@extend_schema(
+    responses=GroupSerializer,
+    description="Retrieve a role"
 )
-@api_view(["GET", "PUT", "DELETE"]) 
+@api_view(["GET"])
 @permission_classes([IsAuthenticated, IsSuperUser])
-def group_detail(request, pk):
-    
+def group_detail_get(request, pk):
     try:
         group = Group.objects.get(pk=pk)
     except Group.DoesNotExist:
-        return Response(
-            {"detail": "Group not found."},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"id": group.id, "name": group.name})
 
-    if request.method == "GET":
-        return Response(GroupSerializer(group).data)
+
+# PUT and DELETE /api/roles/{id}/update/
+@extend_schema(
+    methods=["PUT"],
+    request=GroupCreateSerializer,
+    responses=GroupSerializer,
+    description="Update a role"
+)
+@extend_schema(
+    methods=["DELETE"],
+    responses={204: None},
+    description="Delete a role"
+)
+@api_view(["PUT", "DELETE"])
+@permission_classes([IsAuthenticated, IsSuperUser])
+def group_detail_manage(request, pk):
+    try:
+        group = Group.objects.get(pk=pk)
+    except Group.DoesNotExist:
+        return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "PUT":
         serializer = GroupCreateSerializer(group, data=request.data)
-
         if serializer.is_valid():
-            serializer.save()
+            group = serializer.save()
             return Response(GroupSerializer(group).data)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     group.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-#  grp set permission 
-@extend_schema(
-    request=PermissionAssignSerializer,
-    responses={200: None},
-)
-@api_view(["POST"]) 
-@permission_classes([IsAuthenticated, IsSuperUser])
-def group_set_permissions(request, pk):
-    
-    try:
-        group = Group.objects.get(pk=pk)
-    except Group.DoesNotExist:
-        return Response(
-            {"detail": "Group not found."},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    serializer = PermissionAssignSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-
-    permission_ids = serializer.validated_data["permission_ids"]
-    permissions = list(Permission.objects.filter(id__in=permission_ids))
-
-    if len(permissions) != len(set(permission_ids)):
-        return Response(
-            {"detail": "One or more permissions are invalid."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    group.permissions.set(permissions)
-
-    return Response({"message": "Permissions updated."})
-
-
-# permission list
+# GET /api/permissions/
 @extend_schema(
     responses={200: PermissionSerializer(many=True)},
 )
-@api_view(["GET"]) 
+@api_view(["GET"])
 @permission_classes([IsAuthenticated, IsSuperUser])
 def permission_list(request):
     permissions = Permission.objects.select_related("content_type")
     return Response(PermissionSerializer(permissions, many=True).data)
 
 
+# POST /api/roles/{id}/permissions/
+@extend_schema(
+    request=GroupPermissionSerializer,
+    responses={200: None},
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsSuperUser])
+def group_set_permissions(request, pk):
+    try:
+        group = Group.objects.get(pk=pk)
+    except Group.DoesNotExist:
+        return Response({"detail": "Group not found."}, status=404)
 
-# admin
-# user list 
+    serializer = GroupPermissionSerializer(group, data=request.data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response({"message": "Permissions updated."})
 
+
+# GET, POST /api/admin-users/
 @extend_schema_view(
     get=extend_schema(
         responses={200: AdminUserSerializer(many=True)},
@@ -256,7 +244,7 @@ def permission_list(request):
         responses={201: AdminUserSerializer},
     ),
 )
-@api_view(["GET", "POST"]) 
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated, IsSuperUser])
 def admin_user_list(request):
     User = get_user_model()
@@ -266,24 +254,17 @@ def admin_user_list(request):
         return Response(AdminUserSerializer(users, many=True).data)
 
     serializer = AdminUserCreateSerializer(data=request.data)
-
     if serializer.is_valid():
         role_ids = serializer.validated_data.pop("role_ids", [])
-
         user = serializer.save()
-
         if role_ids:
             user.groups.set(Group.objects.filter(id__in=role_ids))
-
-        return Response(
-            AdminUserSerializer(user).data,
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(AdminUserSerializer(user).data, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# user detail 
+# GET, PUT, DELETE /api/admin-users/{id}/
 @extend_schema_view(
     get=extend_schema(
         responses={200: AdminUserSerializer},
@@ -296,60 +277,44 @@ def admin_user_list(request):
         responses={204: None},
     ),
 )
-@api_view(["GET", "PUT", "DELETE"]) 
+@api_view(["GET", "PUT", "DELETE"])
 @permission_classes([IsAuthenticated, IsSuperUser])
 def admin_user_detail(request, pk):
-
     User = get_user_model()
     try:
         user = User.objects.get(pk=pk, is_staff=True)
     except User.DoesNotExist:
-        return Response(
-            {"detail": "Not found."},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "GET":
         return Response(AdminUserSerializer(user).data)
 
     if request.method == "PUT":
         serializer = AdminUserSerializer(user, data=request.data)
-
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     user.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# assain role 
+# POST /api/admin-users/{id}/roles/
 @extend_schema(
-    request=RoleAssignSerializer,
+    request=UserRoleSerializer,
     responses={200: None},
 )
-@api_view(["POST"]) 
+@api_view(["POST"])
 @permission_classes([IsAuthenticated, IsSuperUser])
 def admin_user_assign_roles(request, pk):
-    
     User = get_user_model()
     try:
         user = User.objects.get(pk=pk, is_staff=True)
     except User.DoesNotExist:
-        return Response(
-            {"detail": "Not found."},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"detail": "Not found."}, status=404)
 
-    serializer = RoleAssignSerializer(data=request.data)
+    serializer = UserRoleSerializer(user, data=request.data)
     serializer.is_valid(raise_exception=True)
-
-    user.groups.set(
-        Group.objects.filter(
-            id__in=serializer.validated_data["role_ids"]
-        )
-    )
-
+    serializer.save()
     return Response({"message": "Roles updated."})

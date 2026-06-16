@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 
 
 class TokenObtainPairRequestSerializer(serializers.Serializer):
@@ -39,7 +40,7 @@ class GroupCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = ("name",)
-
+        
 
 class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,18 +105,21 @@ class AdminUserCreateSerializer(AdminUserSerializer):
 
         return user
 
-
-class PermissionAssignSerializer(serializers.Serializer):
-    permission_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=True,
-        help_text="List of permission IDs.",
+User = get_user_model()
+class UserRoleSerializer(serializers.ModelSerializer):
+    groups = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Group.objects.all()
     )
-
-
-class RoleAssignSerializer(serializers.Serializer):
-    role_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=True,
-        help_text="List of role IDs.",
+    class Meta:
+        model = User
+        fields = ("groups",)
+        
+class GroupPermissionSerializer(serializers.ModelSerializer):
+    permissions = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Permission.objects.all()
     )
+    class Meta:
+        model = Group
+        fields = ("permissions",)
