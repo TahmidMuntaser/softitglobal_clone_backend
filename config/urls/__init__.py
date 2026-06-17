@@ -16,6 +16,7 @@ from apps.accounts.views import (
     admin_user_list,
     admin_user_detail,
     admin_user_assign_roles,
+    me,
 )
 from apps.catalog.views import CategoryViewSet, ProductViewSet
 from apps.orders.views import OrderViewSet
@@ -36,31 +37,32 @@ urlpatterns = [
     # admin dashboard
     path("admin/", admin.site.urls),
 
-    # login, logout
+    # auth
     path("api/token/", token_obtain_pair),
     path("api/token/refresh/", token_refresh),
     path("api/logout/", logout),
+    path("api/me/", me, name="me"),
 
-    # swagger ui
+    # swagger
     path("api/openapi/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 
-    # role endpoints
+    # roles
     path("api/roles/", group_list_get, name="group-list"),
     path("api/roles/create/", group_list_post, name="group-create"),
     path("api/roles/<int:pk>/", group_detail_get, name="group-detail"),
-    path("api/roles/<int:pk>/update/", group_detail_manage, name="group-manage"),  
+    path("api/roles/<int:pk>/update/", group_detail_manage, name="group-manage"),
 
-    # permission endpoints
+    # permissions
     path("api/permissions/", permission_list, name="permission-list"),
     path("api/roles/<int:pk>/permissions/", group_set_permissions, name="group-set-permissions"),
 
-    # admin user endpoints
+    # admin users
     path("api/admin-users/", admin_user_list, name="admin-user-list"),
     path("api/admin-users/<int:pk>/", admin_user_detail, name="admin-user-detail"),
     path("api/admin-users/<int:pk>/roles/", admin_user_assign_roles, name="admin-user-assign-roles"),
 
-    # categories, order, product
+     # categories, order, product
     path("api/", include(router.urls)),
 
     # public endpoints

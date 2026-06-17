@@ -3,7 +3,7 @@ from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import viewsets
-from apps.accounts.permissions import IsSuperUser
+from rest_framework.permissions import DjangoModelPermissions
 from apps.catalog.models import Category, Product
 from apps.catalog.serializers import CategorySerializer, ProductSerializer
 
@@ -50,10 +50,10 @@ def product_detail(request, pk):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by("name")
     serializer_class = CategorySerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [DjangoModelPermissions]
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related("category").all().order_by("name")
     serializer_class = ProductSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [DjangoModelPermissions]

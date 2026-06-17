@@ -7,7 +7,7 @@ from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-
+from rest_framework.permissions import DjangoModelPermissions
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from apps.orders.models import Cart, CartItem, Order
@@ -137,7 +137,7 @@ def order_detail(request, pk):
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.prefetch_related("items__product").all().order_by("-created_at")
     serializer_class = OrderSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [DjangoModelPermissions]
     http_method_names = ["get", "patch", "head", "options"]
 
     def partial_update(self, request, *args, **kwargs):
